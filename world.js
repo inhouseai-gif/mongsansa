@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createBuddha } from './buddha.js?v=217f1dd5b9';
+import { createBuddha } from './buddha.js?v=91f486f5bd';
 
 // Coordinates and public API: INTERFACES.md §0–3.1. All scenery is procedural.
 export const BOUNDS = Object.freeze({ minX: -44, maxX: 36, minZ: -42, maxZ: 62 });
@@ -84,28 +84,31 @@ export async function buildWorld({scene, renderer, camera, quality='high', onPro
   const cellKey=(x,z)=>(x+128)*256+z+128;
   function indexCollisions() {
     buckets.clear();
-    for(const c of colliders){const rx=c.type==='circle'?c.r:Math.abs(c.cs)*c.hw+Math.abs(c.sn)*c.hd,rz=c.type==='circle'?c.r:Math.abs(c.sn)*c.hw+Math.abs(c.cs)*c.hd;
+    for(const c of colliders){const cr=c.type==='circle'?Math.max(c.r,c.navR||0):0,rx=c.type==='circle'?cr:Math.abs(c.cs)*c.hw+Math.abs(c.sn)*c.hd,rz=c.type==='circle'?cr:Math.abs(c.sn)*c.hw+Math.abs(c.cs)*c.hd;
       for(let ix=Math.floor((c.x-rx-1)/CELL);ix<=Math.floor((c.x+rx+1)/CELL);ix++)for(let iz=Math.floor((c.z-rz-1)/CELL);iz<=Math.floor((c.z+rz+1)/CELL);iz++){
         const k=cellKey(ix,iz);if(!buckets.has(k))buckets.set(k,[]);buckets.get(k).push(c);
       }
     }
   }
-  function collides(c,x,z,r) {
+  function collides(c,x,z,r,fixed) {
     const dx=x-c.x,dz=z-c.z;
-    if(c.type==='circle')return dx*dx+dz*dz<(c.r+r)**2;
-    const lx=Math.abs(dx*c.cs-dz*c.sn)-c.hw,lz=Math.abs(dx*c.sn+dz*c.cs)-c.hd;
-    return Math.max(0,lx)**2+Math.max(0,lz)**2<r*r || (lx<=0&&lz<=0);
+    if(c.type==='circle'){const cr=(fixed&&c.navR!==undefined?c.navR:c.r)+r;return dx*dx+dz*dz<cr*cr;}
+    const lx=Math.abs(dx*c.cs-dz*c.sn)-c.hw,lz=Math.abs(dx*c.sn+dz*c.cs)-c.hd,ox=Math.max(0,lx),oz=Math.max(0,lz);
+    return ox*ox+oz*oz<r*r || (lx<=0&&lz<=0);
   }
-  function blocked(x,z,r=.3) {
+  function blockedBy(x,z,r,fixed) {
     if(!Number.isFinite(x+z+r))return true;r=Math.max(0,r);
     if(x-r<BOUNDS.minX||x+r>BOUNDS.maxX||z-r<BOUNDS.minZ||z+r>BOUNDS.maxZ||x<riverX(z)+1.6+r||inPond(x,z,r))return true;
-    if(r<=1){const list=buckets.get(cellKey(Math.floor(x/CELL),Math.floor(z/CELL)));if(list)for(let i=0;i<list.length;i++)if(collides(list[i],x,z,r))return true;}
+    if(r<=1){const list=buckets.get(cellKey(Math.floor(x/CELL),Math.floor(z/CELL)));if(list)for(let i=0;i<list.length;i++){const c=list[i];if(!(fixed&&c.soft)&&collides(c,x,z,r,fixed))return true;}}
     else { // Rare large-agent query: no fixed-radius assumption.
       const n=Math.ceil((r-1)/CELL),cx=Math.floor(x/CELL),cz=Math.floor(z/CELL);
-      for(let a=cx-n;a<=cx+n;a++)for(let b=cz-n;b<=cz+n;b++){const list=buckets.get(cellKey(a,b));if(list)for(const c of list)if(collides(c,x,z,r))return true;}
+      for(let a=cx-n;a<=cx+n;a++)for(let b=cz-n;b<=cz+n;b++){const list=buckets.get(cellKey(a,b));if(list)for(const c of list)if(!(fixed&&c.soft)&&collides(c,x,z,r,fixed))return true;}
     }
     return false;
   }
+  function blocked(x,z,r=.3){return blockedBy(x,z,r,false);}
+  // 고양이 길: 그래픽 품질(나무·대나무 수)이 달라도 모든 방문객에게 같은 판정
+  function blockedFixed(x,z,r=.3){return blockedBy(x,z,r,true);}
   function heightAt(x,z) {
     if(inside(x,z,-16,0,-15,-5))return 1.25;
     if(inside(x,z,-10,-6,-5,-3.4))return 1.25*(-3.4-z)/1.6;
@@ -364,9 +367,9 @@ export async function buildWorld({scene, renderer, camera, quality='high', onPro
   box(27.9,1.7,22.6,.12,1.15,.62,'#ece6d6',robe);box(27.9,2.14,22.6,.13,.28,1.04,'#ece6d6',robe);box(27.99,1.7,22.6,.015,1.1,.035,'#d2c9b7',robe);cb(27.9,22.6,.35,1.2);
   // Trees share trunks/crowns, including deliberately dense perimeter woodland.
   const treeRecords=[];
-  function tree(x,z,type='maple',size=1,collision=true){const y=groundHeight(x,z),h=(3.7+rnd()*.8)*size;treeRecords.push({x,z,type,size});
+  function tree(x,z,type='maple',size=1,collision=true,soft=false,navR=.22*size){const y=groundHeight(x,z),h=(3.7+rnd()*.8)*size;treeRecords.push({x,z,type,size});
     trunks.push({p:[x,y+h*.42,z],s:[.17*size,h*.84,.17*size],c:type==='bamboo'?'#8aa65a':C.pine,r:[0,rnd(),.035]});
-    if(collision)cc(x,z,.22*size);
+    if(collision)collider({type:'circle',x,z,r:.22*size,soft,navR});
     const tint=type==='pine'?'#3f5a3a':type==='ginkgo'?'#e7b53c':type==='persimmon'?'#a28b3c':rnd()>.5?'#c8452e':'#d9702e';
     if(type==='pine'){for(let j=0;j<3;j++)pineCrowns.push({p:[x+Math.sin(j*2.4)*.5,y+h-.45+j*.3,z+Math.cos(j*2.4)*.35],s:[(1.7-j*.25)*size,.45*size,(1.6-j*.25)*size],c:j%2?'#425e40':'#354d35'});}
     else for(let j=0;j<(high?4:2);j++){const a=j*2.4,r=j===0?0:.8*size;crowns.push({p:[x+Math.sin(a)*r,y+h+(j===0?.4:0),z+Math.cos(a)*r],s:[1.3*size,(1.05+rnd()*.4)*size,1.2*size],c:tint,r:[rnd(),rnd(),rnd()]});}
@@ -375,18 +378,24 @@ export async function buildWorld({scene, renderer, camera, quality='high', onPro
   }
   // Explicit trees define the recognisable landmarks.
   tree(10,12,'ginkgo',1.45);for(const [x,z] of [[14,-4],[17,-3.5],[19,-6]])tree(x,z,'persimmon',.85);
-  for(const [x,z] of [[-20,20],[-17,27],[-18,35],[-23,40],[-3,33],[-2,22],[-1,40],[-27,14],[-26,-3],[-22,-8],[-18,-25],[-8,-25],[2,-23],[21,7],[25,12],[25,-6],[29,-14]])tree(x,z,'maple',.9+rnd()*.3);
+  for(const [x,z] of [[-20,20],[-17,27],[-18,35],[-23,40],[-3,33],[-2,22],[-1,40],[-27,14],[-26,-3],[-22,-8],[-18,-25],[-8,-25],[2,-23],[21,7],[25,12],[25,-6],[29,-14]])tree(x,z,'maple',.9+rnd()*.3,true,false,.264);
   for(const [x,z] of [[9,39],[14,36],[19,31],[26,32],[16,29],[29,37],[33,24],[8,22]])tree(x,z,'pine',.8);
   function gardenReserved(x,z){return inside(x,z,-14,15,46.5,62)||nearRoad(x,z)||inPond(x,z,1.1)||Math.abs(x-riverX(z))<2.8||inside(x,z,-29,2,-16,11)||inside(x,z,1,21,-18,0)||inside(x,z,18,30,19,31)||inside(x,z,-18,14,-4,18)||inside(x,z,-17.8,-12.6,-23,-17)||inside(x,z,7,11,42,47)||inside(x,z,-11,-5,42,47)||Math.hypot(x-.9,z-49.5)<2.2;}
+  // 품질마다 수가 다른 무작위 나무·대나무가 설 수 있는 곳(위 반복문 세 개의 범위). 고양이 쉼터는 여기서 .7m 넘게 떨어뜨린다.
+  const DIR8=[[1,0],[.7071067811865476,.7071067811865476],[0,1],[-.7071067811865476,.7071067811865476],[-1,0],[-.7071067811865476,-.7071067811865476],[0,-1],[.7071067811865476,-.7071067811865476]];
+  function treeSpot(x,z){return (inside(x,z,-41,-33,-45,65)||inside(x,z,31,43,-45,65)||inside(x,z,-43,43,-47,-39)||inside(x,z,-30,30,48,65))&&!gardenReserved(x,z)&&!(Math.abs(x)<3.5&&z>48)
+    ||inside(x,z,-29,30,-37,41)&&!gardenReserved(x,z)&&!inside(x,z,-31,-12,-42,-27)
+    ||inside(x,z,-30,-13,-40,-28)&&!nearRoad(x,z);}
+  function treeFree(x,z){if(treeSpot(x,z))return false;for(const [a,b] of DIR8)if(treeSpot(x+a*.7,z+b*.7))return false;return true;}
   for(let i=0;i<(high?265:120);i++){let x,z;const side=i%4;
     if(side===0){x=-41+rnd()*8;z=-45+rnd()*110;}else if(side===1){x=31+rnd()*12;z=-45+rnd()*110;}else if(side===2){x=-43+rnd()*86;z=-47+rnd()*8;}else {x=-30+rnd()*60;z=48+rnd()*17;}
-    if(gardenReserved(x,z)||Math.abs(x)<3.5&&z>48)continue;tree(x,z,i%4===0?'pine':i%5===0?'ginkgo':'maple',.8+rnd()*.65,x>=-32&&x<=36&&z<=62&&z>=-42);
+    if(gardenReserved(x,z)||Math.abs(x)<3.5&&z>48)continue;tree(x,z,i%4===0?'pine':i%5===0?'ginkgo':'maple',.8+rnd()*.65,x>=-32&&x<=36&&z<=62&&z>=-42,true);
   }
   // Fill remaining garden pockets without obstructing doors, paths or spots.
-  for(let i=0;i<(high?55:22);i++){const x=-29+rnd()*59,z=-37+rnd()*78;if(gardenReserved(x,z)||inside(x,z,-31,-12,-42,-27))continue;tree(x,z,i%3===0?'pine':'maple',.7+rnd()*.45);}
+  for(let i=0;i<(high?55:22);i++){const x=-29+rnd()*59,z=-37+rnd()*78;if(gardenReserved(x,z)||inside(x,z,-31,-12,-42,-27))continue;tree(x,z,i%3===0?'pine':'maple',.7+rnd()*.45,true,true);}
   for(let i=0;i<(high?160:60);i++){const x=-30+rnd()*17,z=-40+rnd()*12;if(nearRoad(x,z))continue;const h=3.6+rnd()*2.5;
     bamboo.push({p:[x,h/2,z],s:[.045,h,.045],c:'#8aa65a'});for(let y=.6;y<h;y+=high?.75:1)bambooBands.push({p:[x,y,z],s:[.058,.05,.058],c:'#536d43'});
-    for(let j=0;j<2;j++)crowns.push({p:[x+(rnd()-.5)*.5,h-.4-j*.65,z],s:[.55,.16,.36],c:'#657d48',r:[0,rnd()*TAU,.3]});cc(x,z,.075);
+    for(let j=0;j<2;j++)crowns.push({p:[x+(rnd()-.5)*.5,h-.4-j*.65,z],s:[.55,.16,.36],c:'#657d48',r:[0,rnd()*TAU,.3]});collider({type:'circle',x,z,r:.075,soft:true});
   }
   const bladeGeo=new THREE.BufferGeometry();bladeGeo.setAttribute('position',new THREE.Float32BufferAttribute([-.13,0,0,.13,0,0,.04,1,.025,0,0,-.13,0,0,.13,-.04,.8,.025],3));bladeGeo.computeVertexNormals();
   const leafGeo=new THREE.BufferGeometry();leafGeo.setAttribute('position',new THREE.Float32BufferAttribute([0,-1,0,-.7,0,0,0,1,.14,0,-1,0,0,1,.14,.7,0,0],3));leafGeo.computeVertexNormals();
@@ -583,7 +592,7 @@ export async function buildWorld({scene, renderer, camera, quality='high', onPro
   pickRoot.traverse(o=>{if(!o.isMesh)return;if(!o.userData.pick){let p=o.parent;while(p&&!p.userData.pick)p=p.parent;if(p)o.userData.pick={...p.userData.pick};}});
   indexCollisions();
   await stage(.91,'산문 앞 첫 화면을 그리고 있어요');
-  const world={root,pickRoot,colliders,cameraBlockers,bounds:BOUNDS,spots,places,heightAt,surfaceAt,zoneAt,blocked,raycastGround,placeAt,mapUV,drawMap,
+  const world={root,pickRoot,colliders,cameraBlockers,bounds:BOUNDS,spots,places,heightAt,surfaceAt,zoneAt,blocked,raycastGround,placeAt,blockedFixed,treeFree,mapUV,drawMap,
     startPos:{x:0,z:58,yaw:PI},pagodaRing:{x:-8,z:5,r:3.4},fireCenter,woodpilePos,catFireSpot:{x:-7,z:15.3},
     npc:{abbot:{x:-12.2,z:-11.2,yaw:PI},tea:{x:-24,z:6,yaw:PI/2},guide:{x:20.4,z:29.4,yaw:0},fireGuest:{x:-5.4,z:14.6,yaw:-2.12}},
     paths:{cat:[{x:-15.2,z:-20},{x:-15.2,z:-17},{x:-17.2,z:-16.5},{x:-17.2,z:-3.5},{x:-14,z:-3},{x:-13,z:17.5},{x:-3,z:17.5},{x:0,z:15.7},{x:7,z:15},{x:11.6,z:14.2},{x:7,z:15},{x:0,z:15.7},{x:-3,z:17.5},{x:-13,z:17.5},{x:-17.2,z:-3.5},{x:-17.2,z:-16.5},{x:-15.2,z:-17}],

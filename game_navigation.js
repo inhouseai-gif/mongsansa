@@ -4,16 +4,17 @@ export function createNavigator(world) {
   const point=i=>({x:b.minX+(i%w)*step,z:b.minZ+Math.floor(i/w)*step});
   const index=(x,z)=>Math.max(0,Math.min(h-1,Math.round((z-b.minZ)/step)))*w+Math.max(0,Math.min(w-1,Math.round((x-b.minX)/step)));
   const free=(x,z)=>!world.blocked(x,z,radius);
-  function clear(a,c) {const d=Math.hypot(c.x-a.x,c.z-a.z),n=Math.max(1,Math.ceil(d/.2));for(let j=0;j<=n;j++)if(!free(a.x+(c.x-a.x)*j/n,a.z+(c.z-a.z)*j/n))return false;return true;}
+  const len=(x,z)=>Math.sqrt(x*x+z*z); // sqrt는 모든 엔진에서 같은 값(hypot은 엔진마다 끝자리가 달라 고양이 길이 갈릴 수 있다)
+  function clear(a,c) {const d=len(c.x-a.x,c.z-a.z),n=Math.max(1,Math.ceil(d/.2));for(let j=0;j<=n;j++)if(!free(a.x+(c.x-a.x)*j/n,a.z+(c.z-a.z)*j/n))return false;return true;}
   function nearest(p) {if(free(p.x,p.z))return p;for(let r=.5;r<=3;r+=.5)for(let k=0;k<24;k++){const a=k*Math.PI/12,q={x:p.x+Math.cos(a)*r,z:p.z+Math.sin(a)*r};if(free(q.x,q.z))return q;}return null;}
-  function gridAnchor(p){const base=index(p.x,p.z),bx=base%w,bz=Math.floor(base/w);for(let r=0;r<=5;r++){const options=[];for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){const x=bx+dx,z=bz+dz;if(x<0||x>=w||z<0||z>=h||Math.max(Math.abs(dx),Math.abs(dz))!==r)continue;const i=z*w+x,q=point(i);if(free(q.x,q.z)&&clear(p,q))options.push({i,d:Math.hypot(q.x-p.x,q.z-p.z)});}if(options.length)return options.sort((a,b)=>a.d-b.d)[0].i;}return -1;}
+  function gridAnchor(p){const base=index(p.x,p.z),bx=base%w,bz=Math.floor(base/w);for(let r=0;r<=5;r++){const options=[];for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){const x=bx+dx,z=bz+dz;if(x<0||x>=w||z<0||z>=h||Math.max(Math.abs(dx),Math.abs(dz))!==r)continue;const i=z*w+x,q=point(i);if(free(q.x,q.z)&&clear(p,q))options.push({i,d:len(q.x-p.x,q.z-p.z)});}if(options.length)return options.sort((a,b)=>a.d-b.d)[0].i;}return -1;}
   function path(from,to) {
     const target=nearest(to),origin=nearest(from);if(!target||!origin)return [];
     if(clear(origin,target))return [target];
     const start=gridAnchor(origin),end=gridAnchor(target);if(start<0||end<0)return [];
     const cost=new Float32Array(w*h).fill(Infinity),parent=new Int32Array(w*h).fill(-1),closed=new Uint8Array(w*h),heap=[];
     const pass=new Int8Array(w*h);const valid=i=>{if(i<0||i>=w*h)return false;if(!pass[i]){const p=point(i);pass[i]=free(p.x,p.z)?1:-1;}return pass[i]===1;};
-    const heuristic=i=>Math.hypot(i%w-end%w,Math.floor(i/w)-Math.floor(end/w));
+    const heuristic=i=>len(i%w-end%w,Math.floor(i/w)-Math.floor(end/w));
     const push=(i,f)=>{let j=heap.length;heap.push({i,f});while(j){const k=(j-1)>>1;if(heap[k].f<=f)break;[heap[k],heap[j]]=[heap[j],heap[k]];j=k;}};
     const pop=()=>{const a=heap[0],last=heap.pop();if(heap.length){heap[0]=last;let j=0;for(;;){let k=j*2+1;if(k>=heap.length)break;if(k+1<heap.length&&heap[k+1].f<heap[k].f)k++;if(heap[j].f<=heap[k].f)break;[heap[j],heap[k]]=[heap[k],heap[j]];j=k;}}return a.i;};
     cost[start]=0;push(start,heuristic(start));let found=false;
@@ -24,7 +25,7 @@ export function createNavigator(world) {
     const raw=[target];for(let i=end;i!==start&&i!==-1;i=parent[i])raw.push(point(i));raw.push(point(start),origin);raw.reverse();
     const result=[];let anchor=0;while(anchor<raw.length-1){let next=anchor+1;for(let j=next+1;j<raw.length;j++){if(clear(raw[anchor],raw[j]))next=j;else break;}result.push(raw[next]);anchor=next;}return result;
   }
-  function slide(p,dx,dz) {const n=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.18));for(let i=0;i<n;i++){const x=dx/n,z=dz/n;if(free(p.x+x,p.z+z)){p.x+=x;p.z+=z;}else{if(free(p.x+x,p.z))p.x+=x;if(free(p.x,p.z+z))p.z+=z;}}return p;}
+  function slide(p,dx,dz) {const n=Math.max(1,Math.ceil(len(dx,dz)/.18));for(let i=0;i<n;i++){const x=dx/n,z=dz/n;if(free(p.x+x,p.z+z)){p.x+=x;p.z+=z;}else{if(free(p.x+x,p.z))p.x+=x;if(free(p.x,p.z+z))p.z+=z;}}return p;}
   return {path,slide,clear,nearest};
 }
 

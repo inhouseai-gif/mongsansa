@@ -27,17 +27,18 @@ function library(quality = 'high') {
   weave.wrapS = weave.wrapT = THREE.RepeatWrapping; weave.repeat.set(3, 3);
   s.cloth = s.mat(new THREE.MeshStandardMaterial({ vertexColors: true, map: weave, roughness: 1 }));
   s.faces = {};
-  for (const name of ['normal', 'happy', 'closed', 'sleepy', 'monk', 'cat', 'catClosed']) {
+  for (const name of ['normal', 'happy', 'closed', 'sleepy', 'monk', 'cat', 'catClosed', 'catDark', 'catDarkClosed', 'catTux', 'catTuxClosed']) {
     const cv = document.createElement('canvas'); cv.width = 512; cv.height = 384;
     const c = cv.getContext('2d'); c.lineCap = 'round'; c.lineJoin = 'round';
-    const cat = name.startsWith('cat'), eyeY = cat ? 190 : 230;
-    c.fillStyle = 'rgba(242,161,153,.55)';
+    const cat = name.startsWith('cat'), dark = /^cat(Dark|Tux)/.test(name), tux = name.startsWith('catTux'), eyeY = cat ? 190 : 230;
+    c.fillStyle = dark ? 'rgba(242,161,153,.3)' : 'rgba(242,161,153,.55)';
     for (const x of [114, 398]) { c.beginPath(); c.ellipse(x, 268, 38, 22, 0, 0, TAU); c.fill(); }
-    c.strokeStyle = '#3a2927'; c.lineWidth = 12; c.fillStyle = '#272321';
+    c.strokeStyle = dark ? '#eadfd3' : '#3a2927'; c.lineWidth = 12; c.fillStyle = '#272321';
     for (const x of [165, 347]) {
       c.beginPath();
-      if (name === 'normal' || name === 'cat') {
-        c.ellipse(x, eyeY, cat ? 20 : 27, cat ? 31 : 37, 0, 0, TAU); c.fill();
+      if (name === 'normal' || name === 'cat' || name === 'catDark' || name === 'catTux') {
+        if (dark) { c.fillStyle = '#e0c45c'; c.ellipse(x, eyeY, 22, 31, 0, 0, TAU); c.fill(); c.fillStyle = '#272321'; c.beginPath(); c.ellipse(x, eyeY + 2, 9, 25, 0, 0, TAU); c.fill(); }
+        else { c.ellipse(x, eyeY, cat ? 20 : 27, cat ? 31 : 37, 0, 0, TAU); c.fill(); }
         c.fillStyle = '#fffdf6'; c.beginPath(); c.ellipse(x - 7, eyeY - 13, 9, 11, -.25, 0, TAU); c.fill();
         c.beginPath(); c.arc(x + 8, eyeY + 12, 4, 0, TAU); c.fill(); c.fillStyle = '#272321';
       } else if (name === 'happy' || name === 'monk') {
@@ -46,10 +47,11 @@ function library(quality = 'high') {
         c.ellipse(x, eyeY + 9, 23, 11, 0, 0, PI); c.fill(); c.moveTo(x - 27, eyeY + 4); c.lineTo(x + 25, eyeY + 4); c.stroke();
       } else { c.moveTo(x - 25, eyeY); c.quadraticCurveTo(x, eyeY + 15, x + 25, eyeY); c.stroke(); }
     }
-    c.strokeStyle = '#9b5a4a'; c.lineWidth = 8; c.beginPath();
+    c.strokeStyle = dark && !tux ? '#dccdbf' : '#9b5a4a'; c.lineWidth = 8; c.beginPath();
     if (cat) {
       c.fillStyle = '#be7973'; c.moveTo(245, 230); c.lineTo(267, 230); c.lineTo(256, 242); c.closePath(); c.fill();
       c.moveTo(256, 242); c.quadraticCurveTo(240, 265, 230, 247); c.moveTo(256, 242); c.quadraticCurveTo(272, 265, 282, 247);
+      if (dark) { c.stroke(); c.beginPath(); c.strokeStyle = '#e8ded3'; }
       for (const side of [-1, 1]) for (let j = 0; j < 3; j++) { c.moveTo(256 + side * 70, 250 + j * 13); c.lineTo(256 + side * 130, 240 + j * 19); }
     } else { c.moveTo(240, 291); c.quadraticCurveTo(256, name === 'happy' ? 316 : 307, 272, 291); }
     c.stroke();
@@ -80,8 +82,9 @@ function join(s, parts, grain = false) {
   const list = parts.map(p => {
     let g = p.g.index ? p.g.toNonIndexed() : p.g.clone(); p.g.dispose();
     g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...p.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(...p.rot)), new THREE.Vector3(...p.scale)));
-    const a = g.getAttribute('position'), col = new THREE.Color(p.color), colors = new Float32Array(a.count * 3);
+    const a = g.getAttribute('position'), fn = typeof p.color === 'function', col = new THREE.Color(fn ? '#fff' : p.color), colors = new Float32Array(a.count * 3);
     for (let i = 0; i < a.count; i++) {
+      if (fn) col.set(p.color(a.getX(i), a.getY(i), a.getZ(i)));
       const k = grain ? .82 + .18 * Math.sin(a.getY(i) * 110 + 4 * Math.sin(a.getX(i) * 19 + a.getZ(i) * 9)) : 1;
       colors.set([col.r * k, col.g * k, col.b * k], i * 3);
     }
@@ -224,13 +227,13 @@ function human({ vest = '#e59a52', quality = 'high', role = null } = {}) {
     root, height: monk ? 1.50 : 1.174,
     setPose(name) {
       if (!['idle', 'walk', 'sit', 'lie', 'sweep', 'prayWalk', 'moktak', 'zen'].includes(name) || name === pose) return;
-      if (clip) { clip.resolve(); clip = null; }
+      if (clip) { clip.resolve(false); clip = null; }
       blendFrom = { ...shown }; blendTime = 0; if ((name === 'walk' || name === 'prayWalk') && pose !== 'walk' && pose !== 'prayWalk') initialHop = 0;
       pose = name; if (name === 'moktak') api.hold('moktak'); if (name === 'sweep') api.hold('broom');
     },
     play(name) {
       if (!DURATIONS[name] || disposed) return Promise.resolve();
-      if (clip) clip.resolve();
+      if (clip) clip.resolve(false);
       if (name === 'sip') api.hold('cup'); if (name === 'incense') api.hold('incense');
       if (name === 'gassho' || name === 'pet') api.setExpression('happy');
       blendFrom = { ...shown }; blendTime = 0;
@@ -281,11 +284,11 @@ function human({ vest = '#e59a52', quality = 'high', role = null } = {}) {
       legs[0].position.y = legs[1].position.y = shown.fy;
       if (held === 'cup' || held === 'incense') hand.rotation.x = -shown.ra; else hand.rotation.x = 0;
       leftHand.rotation.x = held === 'moktak' ? -shown.la : 0;
-      if (clip && clip.time >= clip.duration) { const done = clip; clip = null; if (done.name === 'sitUp') pose = 'sit'; blendFrom = { ...shown }; blendTime = 0; done.resolve(); }
+      if (clip && clip.time >= clip.duration) { const done = clip; clip = null; if (done.name === 'sitUp') pose = 'sit'; blendFrom = { ...shown }; blendTime = 0; done.resolve(true); }
       emoteTime += dt;
       if (emoteTime < 2.3) { api.headPos(v); root.worldToLocal(v); emoji.position.copy(v).add(new THREE.Vector3(Math.sin(emoteTime * 3) * .035, p.r + .15 + emoteTime * .15, 0)); emoteMat.opacity = Math.sin(PI * emoteTime / 2.3); } else emoji.visible = false;
     },
-    dispose() { if (disposed) return; disposed = true; clip?.resolve(); root.removeFromParent(); emoteMat.dispose(); if (!monk) vestMat.dispose(); root.clear(); s.release(); }
+    dispose() { if (disposed) return; disposed = true; clip?.resolve(false); root.removeFromParent(); emoteMat.dispose(); if (!monk) vestMat.dispose(); root.clear(); s.release(); }
   };
   if (role === 'novice') api.hold('broom');
   api.update(0); return api;
@@ -294,24 +297,39 @@ function human({ vest = '#e59a52', quality = 'high', role = null } = {}) {
 export function createMongi(options = {}) { return human(options); }
 export function createMonk({ role } = {}) { return human({ role: ['abbot', 'tea', 'guide', 'novice'].includes(role) ? role : 'abbot' }); }
 
-export function createCat() {
-  const s = library(), root = new THREE.Group(), bodyRig = new THREE.Group(), headRig = new THREE.Group(), tailRig = new THREE.Group();
-  root.name = '산사 식구:보리'; root.add(bodyRig); bodyRig.add(headRig, tailRig);
-  const p = cached(s, 'catParts', () => {
-    const orange = '#f0b46a', stripe = '#c98140';
-    const body = join(s, [part(sphere(.22, 20), orange, [0, .24, -.045], [1, 1, 1.65]), part(sphere(.17, 16), '#fff1d5', [0, .17, .04], [.88, .85, 1.4]), ...[-.19, -.05, .10].map(z => part(new THREE.TorusGeometry(.208, .014, 5, 16, PI), stripe, [0, .24, z], [1, 1, 1], [0, 0, 0]))]);
-    const hp = [part(sphere(.195, 24), orange, [0, 0, 0], [1.1, .93, .91]), part(sphere(.13, 16), '#fff2dd', [0, -.065, .095], [1.2, .65, .65])];
-    for (const sign of [-1, 1]) { hp.push(part(new THREE.ConeGeometry(.086, .16, 3), orange, [sign * .135, .17, -.01], [1, 1, .6], [0, 0, -sign * .26])); hp.push(part(new THREE.ConeGeometry(.049, .095, 3), '#e4a29a', [sign * .136, .182, .032], [1, 1, .3], [0, 0, -sign * .26])); }
+const COATS = {
+  orange: { fur: '#f0b46a', belly: '#fff1d5', stripe: '#c98140', muzzle: '#fff2dd', ear: '#e4a29a', paw: '#fff0d4', tip: '#f9dfaf' },
+  red: { fur: '#e79a55', belly: '#fff0d8', stripe: '#b8692f', muzzle: '#fff3e2', ear: '#e4a29a', paw: '#fff0d8', tip: '#f6d3a6' },
+  cream: { fur: '#f3d29a', belly: '#fff6e6', stripe: '#e2b675', muzzle: '#fff8ec', ear: '#eaaa9f', paw: '#fff6e6', tip: '#fbe8c6' },
+  black: { fur: '#2f2b2c', belly: '#3a3536', muzzle: '#3d3839', ear: '#7a5553', paw: '#2f2b2c', tip: '#2f2b2c', face: 'catDark' },
+  tuxedo: { fur: '#2f2b2c', belly: '#fbf7f0', muzzle: '#fbf7f0', ear: '#7a5553', paw: '#fbf7f0', tip: '#fbf7f0', face: 'catTux' },
+  calico: { fur: (x, y, z) => z < -.12 && x < -.02 && y > .2 ? '#e9a25a' : x > .04 && z < -.2 && y > .18 ? '#3a3434' : '#fbf6ee', head: (x, y) => y > .07 ? (x < 0 ? '#e9a25a' : '#3a3434') : '#fbf6ee', belly: '#fffaf3', muzzle: '#fffaf3', ear: '#efb2aa', paw: '#fffaf3', tip: '#3a3434', tail: '#e9a25a', leg: '#fbf6ee' },
+  mackerel: { fur: '#9a9a94', belly: '#ece9e2', stripe: '#5e5f5a', muzzle: '#f1eee8', ear: '#dba39c', paw: '#ece9e2', tip: '#5e5f5a' },
+  white: { fur: '#f7f3ec', belly: '#fffaf3', muzzle: '#fffaf3', ear: '#efb2aa', paw: '#fffaf3', tip: '#f7f3ec' },
+  brown: { fur: '#a77b52', belly: '#f1e1c8', stripe: '#6e4b2f', muzzle: '#f1e1c8', ear: '#d99a8e', paw: '#f1e1c8', tip: '#6e4b2f' },
+  point: { fur: '#f1e4cf', belly: '#fbf3e6', muzzle: '#d9bfa3', ear: '#d29b98', earOuter: '#5b4336', paw: '#5b4336', tip: '#5b4336', tail: '#5b4336', leg: '#5b4336' },
+  blue: { fur: '#8c95a0', belly: '#aab2bb', muzzle: '#b5bcc4', ear: '#d29b98', paw: '#9aa3ad', tip: '#8c95a0' },
+  mandu: { fur: (x, y, z) => y > .3 && z < -.05 && z > -.3 ? '#f0cf98' : '#fbf7f0', head: '#fbf7f0', belly: '#fffaf3', muzzle: '#fffaf3', ear: '#efb2aa', paw: '#fffaf3', tip: '#f0cf98', tail: '#f0cf98', leg: '#fbf7f0' },
+};
+export function createCat({ coat = 'orange', name = '보리', seed = 0 } = {}) {
+  const s = library(), root = new THREE.Group(), bodyRig = new THREE.Group(), headRig = new THREE.Group(), tailRig = new THREE.Group(), C = COATS[coat] || COATS.orange, F = C.face || 'cat';
+  root.name = '산사 식구:' + name; root.add(bodyRig); bodyRig.add(headRig, tailRig);
+  const p = cached(s, 'catParts:' + (COATS[coat] ? coat : 'orange'), () => {
+    const fur = C.fur, head = C.head || fur, tc = C.tail || fur;
+    const body = join(s, [part(sphere(.22, 20), fur, [0, .24, -.045], [1, 1, 1.65]), part(sphere(.17, 16), C.belly, [0, .17, .04], [.88, .85, 1.4]), ...(C.stripe ? [-.19, -.05, .10].map(z => part(new THREE.TorusGeometry(.208, .014, 5, 16, PI), C.stripe, [0, .24, z], [1, 1, 1], [0, 0, 0])) : [])]);
+    const hp = [part(sphere(.195, 24), head, [0, 0, 0], [1.1, .93, .91]), part(sphere(.13, 16), C.muzzle, [0, -.065, .095], [1.2, .65, .65])];
+    for (const sign of [-1, 1]) { hp.push(part(new THREE.ConeGeometry(.086, .16, 3), C.earOuter || head, [sign * .135, .17, -.01], [1, 1, .6], [0, 0, -sign * .26])); hp.push(part(new THREE.ConeGeometry(.049, .095, 3), C.ear, [sign * .136, .182, .032], [1, 1, .3], [0, 0, -sign * .26])); }
     const tailCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, .10, -.18), new THREE.Vector3(.03, .32, -.30), new THREE.Vector3(.10, .39, -.24)]);
-    const tail = join(s, [part(new THREE.TubeGeometry(tailCurve, 16, .042, 8, false), orange), part(sphere(.045, 10), '#f9dfaf', [.10, .39, -.24])]);
+    const tail = join(s, [part(new THREE.TubeGeometry(tailCurve, 16, .042, 8, false), tc), part(sphere(.045, 10), C.tip, [.10, .39, -.24])]);
     const curled = new THREE.CatmullRomCurve3([[0,0,0],[.22,.02,-.05],[.32,.03,.20],[.18,.03,.43],[-.04,.03,.42]].map(p => new THREE.Vector3(...p)));
-    const sleepTail = join(s, [part(new THREE.TubeGeometry(curled, 24, .042, 8, false), orange), part(sphere(.044, 10), '#f9dfaf', [-.04,.03,.42])]);
-    return { body, head: join(s, hp), tail, sleepTail, leg: join(s, [part(new THREE.CapsuleGeometry(.05, .12, 4, 10), orange, [0, -.07, 0]), part(sphere(.06, 12), '#fff0d4', [0, -.15, .025], [1, .75, 1.2])]) };
+    const sleepTail = join(s, [part(new THREE.TubeGeometry(curled, 24, .042, 8, false), tc), part(sphere(.044, 10), C.tip, [-.04,.03,.42])]);
+    return { body, head: join(s, hp), tail, sleepTail, leg: join(s, [part(new THREE.CapsuleGeometry(.05, .12, 4, 10), C.leg || fur, [0, -.07, 0]), part(sphere(.06, 12), C.paw, [0, -.15, .025], [1, .75, 1.2])]) };
   });
-  mesh(p.body, s.solid, bodyRig); mesh(p.head, s.solid, headRig); const face = mesh(faceGeometry(s, .196, .93), s.faces.cat, headRig); face.castShadow = false; const tail = mesh(p.tail, s.solid, tailRig);
+  const casters = [mesh(p.body, s.solid, bodyRig), mesh(p.head, s.solid, headRig)]; const face = mesh(faceGeometry(s, .196, .93), s.faces[F], headRig); face.castShadow = false; const tail = mesh(p.tail, s.solid, tailRig);
   const legs = [];
   for (const z of [-.22, .15]) for (const x of [-.13, .13]) { const leg = mesh(p.leg, s.solid, bodyRig); leg.position.set(x, .2, z); legs.push(leg); }
-  let pose = 'idle', oldPose = 'idle', blend = 1, speed = 1, t = 0, clip = null, disposed = false;
+  casters.push(tail, ...legs);
+  let pose = 'idle', oldPose = 'idle', blend = 1, speed = 1, t = Number(seed) || 0, clip = null, disposed = false;
   function configuration(name) {
     if (name === 'sleep') return { y: -.01, sx: 1.17, sy: .72, sz: .94, hx: -.12, hy: .25, hz: .12, hr: -.4, ry: 1.1, tx: 0, ty: .15, tz: -.26 };
     if (name === 'loaf') return { y: -.01, sx: 1.04, sy: .78, sz: 1, hx: 0, hy: .34, hz: .22, hr: .05, ry: 0, tx: 0, ty: .2, tz: -.3 };
@@ -322,6 +340,7 @@ export function createCat() {
     setPose(name) { if (['idle', 'walk', 'sit', 'loaf', 'sleep'].includes(name) && pose !== name) { oldPose = pose; pose = name; blend = 0; } },
     play(name) { if (!['meow', 'stretch', 'purr'].includes(name) || disposed) return Promise.resolve(); clip?.resolve(); return new Promise(resolve => { clip = { name, t: 0, d: name === 'stretch' ? 2 : 1.3, resolve }; }); },
     setSpeed(value) { speed = Number.isFinite(value) ? Math.max(0, value) : 0; },
+    shadow(on) { for (const m of casters) m.castShadow = !!on; },
     headPos(target = new THREE.Vector3()) { root.updateWorldMatrix(true, true); return headRig.getWorldPosition(target); },
     update(dt) {
       if (disposed || !Number.isFinite(dt) || dt < 0) return; t += dt; blend = Math.min(1, blend + dt / .25);
@@ -330,9 +349,9 @@ export function createCat() {
       headRig.position.set(c.hx, c.hy, c.hz); headRig.rotation.set(c.hr, c.ry, 0); tailRig.position.set(c.tx, c.ty, c.tz);
       tail.geometry = pose === 'sleep' ? p.sleepTail : p.tail;
       tailRig.rotation.set(0, Math.sin(t * (pose === 'sleep' ? 1.3 : 2.5)) * (pose === 'sleep' ? .06 : .25), (pose === 'sleep' ? .03 : .13) * Math.sin(t * 1.7));
-      face.material = s.faces[pose === 'sleep' || t % 4.1 < .12 ? 'catClosed' : 'cat'];
+      face.material = s.faces[pose === 'sleep' || t % 4.1 < .12 ? F + 'Closed' : F];
       legs.forEach((l, i) => { l.visible = pose !== 'loaf' && pose !== 'sleep'; l.rotation.x = pose === 'walk' ? Math.sin(t * speed * 10 / root.scale.x + (i === 0 || i === 3 ? 0 : PI)) * .55 : 0; });
-      if (clip) { clip.t += dt; const f = Math.min(1, clip.t / clip.d), a = Math.sin(f * PI); if (clip.name === 'stretch') { bodyRig.scale.z *= 1 + .25 * a; headRig.position.y -= .13 * a; tailRig.rotation.x -= .6 * a; } if (clip.name === 'meow') headRig.rotation.x -= .22 * a; if (clip.name === 'purr') { headRig.rotation.z = Math.sin(t * 22) * .017 * a; face.material = s.faces.catClosed; } if (f >= 1) { clip.resolve(); clip = null; } }
+      if (clip) { clip.t += dt; const f = Math.min(1, clip.t / clip.d), a = Math.sin(f * PI); if (clip.name === 'stretch') { bodyRig.scale.z *= 1 + .25 * a; headRig.position.y -= .13 * a; tailRig.rotation.x -= .6 * a; } if (clip.name === 'meow') headRig.rotation.x -= .22 * a; if (clip.name === 'purr') { headRig.rotation.z = Math.sin(t * 22) * .017 * a; face.material = s.faces[F + 'Closed']; } if (f >= 1) { clip.resolve(); clip = null; } }
     },
     dispose() { if (disposed) return; disposed = true; clip?.resolve(); root.removeFromParent(); root.clear(); s.release(); }
   }; api.update(0); return api;
