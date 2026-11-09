@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { buildWorld } from './world.js?v=91f486f5bd';
-import { createMongi, createMonk, createCat, createMoktak, createBeads } from './actors.js?v=91f486f5bd';
-import { createCatSchedule, hash as catHash, josa } from './cats.js?v=91f486f5bd';
-import { createFx } from './fx.js?v=91f486f5bd';
-import { createAudio } from './audio.js?v=91f486f5bd';
-import { createNet, hasContact } from './net.js?v=91f486f5bd';
-import { createNavigator, cameraHit } from './game_navigation.js?v=91f486f5bd';
-import { portraitCanvas, makeCard, letterCanvas, answersCanvas } from './game_cards.js?v=91f486f5bd';
-import { $, el, text, button, icon, toast, makeModal, colors, sleep, clamp, kst, dayKey, randomName, loadRecord, saveRecord, fonts, VEST_COLORS, LANTERN_COLORS, SKY_PRESET_HOURS } from './game_ui.js?v=91f486f5bd';
+import { buildWorld } from './world.js?v=d3fa739a8e';
+import { createMongi, createMonk, createCat, createMoktak, createBeads } from './actors.js?v=d3fa739a8e';
+import { createCatSchedule, hash as catHash, josa } from './cats.js?v=d3fa739a8e';
+import { createFx } from './fx.js?v=d3fa739a8e';
+import { createAudio } from './audio.js?v=d3fa739a8e';
+import { createNet, hasContact } from './net.js?v=d3fa739a8e';
+import { createNavigator, cameraHit } from './game_navigation.js?v=d3fa739a8e';
+import { portraitCanvas, makeCard, letterCanvas, answersCanvas } from './game_cards.js?v=d3fa739a8e';
+import { $, el, text, button, icon, toast, makeModal, colors, sleep, clamp, kst, dayKey, randomName, loadRecord, saveRecord, fonts, VEST_COLORS, LANTERN_COLORS, SKY_PRESET_HOURS } from './game_ui.js?v=d3fa739a8e';
 
 // All cross-module calls are isolated. A failed optional feature must not stop the frame loop.
 const faults=new Set();

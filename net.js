@@ -457,6 +457,10 @@ export function publicRoom(cfg) {
     if (ws && Date.now() - hiddenAt > 60e3) close(); // 오래 숨어 있던 소켓은 죽었을 수 있다 → 새로
     if (started && !ws && !dead) { backoff = 1000; connect(); } // 한도로 쉬는 중이면 connect가 기다린다
   });
+  // 페이지를 떠날 때(닫기·이동·뒤로 가기 캐시) 바로 나간다고 알리고 닫는다. 안 그러면 서버가 끊긴 줄 알 때까지 약 1분 남들 화면에 남는다
+  globalThis.addEventListener?.('pagehide', () => { clearTimeout(hideTimer); if (!ws) return; if (joined) out('phx_leave', {}); close(); });
+  // 뒤로 가기 캐시에서 돌아오면 다시 붙는다. 새 소켓이라 visibilitychange가 오래 숨은 소켓으로 보고 또 닫지 않게 hiddenAt을 지금으로
+  globalThis.addEventListener?.('pageshow', (e) => { if (e.persisted && started && !ws && !dead) { hiddenAt = Date.now(); backoff = 1000; connect(); } });
 
   return {
     presence(msg) {
