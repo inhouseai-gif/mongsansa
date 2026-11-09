@@ -50,7 +50,7 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 const fail=e=>{document.querySelector('#failure-screen').hidden=false;document.querySelector('#error-detail').textContent=!HTMLScriptElement.supports?.('importmap')?'이 브라우저는 오래돼 열 수 없어요. iOS 16.4 이상의 사파리나 최신 크롬에서 열어 주세요.':e?.message||'산문을 준비하는 데 시간이 오래 걸리고 있어요.';};
-import('./game.js?v=175865e3ba').catch(fail);
+import('./game.js?v=217f1dd5b9').catch(fail);
 let waited=0;const tick=()=>{if(window.__sansaBooted)return;if(!document.hidden)waited+=1000;if(waited>=25000)fail();else setTimeout(tick,1000);};setTimeout(tick,1000);
 </script>
 </body>

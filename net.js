@@ -210,7 +210,7 @@ export function createNet() {
         // db 문서: 잠깐 막힌 unavailable만 짧게 쉬고 한 번 더
         if (code === 'unavailable' && attempt === 0) { await new Promise((r) => setTimeout(r, 300 + Math.random() * 500)); continue; }
         console.warn('[net] lantern write', code, e && e.message);
-        return { ok: savedHere, shared: false, error: code };
+        return { ok: true, shared: false, saved: savedHere, error: code }; // 등은 이미 그려졌다: 실패 대신 저장 여부만 알린다
       }
     }
   }

@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { buildWorld } from './world.js?v=175865e3ba';
-import { createMongi, createMonk, createCat, createMoktak, createBeads } from './actors.js?v=175865e3ba';
-import { createFx } from './fx.js?v=175865e3ba';
-import { createAudio } from './audio.js?v=175865e3ba';
-import { createNet } from './net.js?v=175865e3ba';
-import { createNavigator, cameraHit } from './game_navigation.js?v=175865e3ba';
-import { portraitCanvas, makeCard, letterCanvas, answersCanvas } from './game_cards.js?v=175865e3ba';
-import { $, el, text, button, icon, toast, makeModal, colors, sleep, clamp, kst, dayKey, randomName, loadRecord, saveRecord, fonts, VEST_COLORS, LANTERN_COLORS, SKY_PRESET_HOURS } from './game_ui.js?v=175865e3ba';
+import { buildWorld } from './world.js?v=217f1dd5b9';
+import { createMongi, createMonk, createCat, createMoktak, createBeads } from './actors.js?v=217f1dd5b9';
+import { createFx } from './fx.js?v=217f1dd5b9';
+import { createAudio } from './audio.js?v=217f1dd5b9';
+import { createNet } from './net.js?v=217f1dd5b9';
+import { createNavigator, cameraHit } from './game_navigation.js?v=217f1dd5b9';
+import { portraitCanvas, makeCard, letterCanvas, answersCanvas } from './game_cards.js?v=217f1dd5b9';
+import { $, el, text, button, icon, toast, makeModal, colors, sleep, clamp, kst, dayKey, randomName, loadRecord, saveRecord, fonts, VEST_COLORS, LANTERN_COLORS, SKY_PRESET_HOURS } from './game_ui.js?v=217f1dd5b9';
 
 // All cross-module calls are isolated. A failed optional feature must not stop the frame loop.
 const faults=new Set();
@@ -279,7 +279,8 @@ async function deathStep(){const d=death;if(!d||d.transitioning||d.stage>=5)retu
   }catch(e){report('death',e);stopDeath();}finally{if(death===d)d.transitioning=false;}return true;
 }
 // ② 삶 돌아보기 → 마지막 편지. 적은 답은 이 체험 동안 메모리에만 두고 어디에도 저장·전송하지 않는다
-// 출처: ① 초치노프 존엄치료 질문지(JCO 2005) ②~⑥ 브로니 웨어 The Top Five Regrets of the Dying(2011) ⑦ 국내 임종체험의 묘비명 쓰기
+// 출처: ① 초치노프 존엄치료 질문지(JCO 2005, PMC5944046) ②~⑥ 브로니 웨어 The Top Five Regrets of the Dying(2011, bronnieware.com)
+// ⑦ 국내 임종체험·웰다잉 교육의 묘비명 쓰기(나 혼자 산다 2014 노홍철 임종체험, 송도노인복지관 '나의 묘비명 작성하기' 연수구청 2018, 변미경 외 한국산학기술학회논문지 2017)
 const REFLECT=[
   ['언제 가장 살아 있다고 느꼈나요?','완화의료 정신과 의사 하비 초치노프의 ‘존엄치료’ 첫 질문이에요'],
   ['남의 기대가 아니라, 나답게 살았다고 느낀 때는 언제인가요?','호스피스에서 일한 브로니 웨어가 들은 마지막 후회 ① 나답게 살지 못한 것'],
@@ -300,8 +301,8 @@ function letter(d){if(death!==d)return;const p=deathPanel('② 마지막 편지'
   p.append(el('div',{class:'buttons'},button('편지 접어 두기',()=>{input.value='';custom.value='';world.mujang.showEnvelope(true);player.hold(null);deathStep();},'primary'),button('편지 간직하기',async()=>{const canvas=await letterCanvas(custom.hidden?recipient:custom.value,input.value);await saveCanvas(canvas,'몽산사-마지막편지.png',d);})));}
 // ④ 관 속 질문: 1분은 표시(1)한 6개를 9초마다, 3분은 13개 모두를 13초마다 보여 준다. 관 안에서는 쓰지 않고, 나온 질문은 ⑤에서 골라 답을 적는다
 const COFFIN=[
-  ['지금 가장 먼저 떠오르는 얼굴은 누구인가요',1],                    // 국내 임종체험 관 속 물음
-  ['그 사람에게 아직 하지 못한 말이 있나요',1],                       // 초치노프: 사랑하는 이에게 아직 해야 할 말
+  ['지금, 행복한가요',1],                                             // 국내 임종체험 신청서 첫 물음 '행복하십니까?'(백석웰다잉힐링센터 정용문 센터장, 브라보마이라이프 2023 atc_view/15045)
+  ['사랑하는 사람에게 아직 하지 못한 말이 있나요',1],                  // 초치노프 존엄치료 질문: 사랑하는 이에게 아직 해야 할 말
   ['고맙다고 말하지 못한 사람이 있나요',0],                           // 바이오크: 고마워요
   ['용서하고 싶은 일, 용서받고 싶은 일이 있나요',1],                   // 바이오크: 용서해 줘요·용서할게요
   ['사랑한다는 말을 마지막으로 한 게 언제인가요',0],                   // 바이오크: 사랑해요
@@ -310,9 +311,9 @@ const COFFIN=[
   ['오늘이 생의 마지막 날이라면, 오늘 하려던 일을 그대로 하겠어요',0],   // 잡스 2005 스탠퍼드 졸업 연설
   ['내 삶에서 가장 자랑스러운 일은 무엇인가요',0],                     // 초치노프: 가장 자랑스러운 일
   ['살면서 배운 것 중 꼭 남기고 싶은 한 가지는 무엇인가요',0],          // 초치노프: 삶에서 배워 전하고 싶은 것
-  ['나는 어떤 사람으로 기억되고 싶나요',1],                           // 초치노프: 가족이 알고 기억해 주길 바라는 것
+  ['나는 어떤 사람으로 기억되고 싶나요',1],                           // 초치노프: 가족이 알고 기억해 주길 바라는 것 · 웰다잉문화운동 '무엇을 남기고 싶은가'(브라보마이라이프 2025 atc_view/16787)
   ['다시 산다면 무엇을 다르게 해 보고 싶나요',0],                      // 브로니 웨어: 후회와 '다르게 하고 싶은 것'을 물은 방식
-  ['내일 아침, 무엇부터 하고 싶나요',1],                              // 국내 임종체험 '다시 태어나기'
+  ['내일 아침, 무엇부터 하고 싶나요',1],                              // 국내 임종체험 '다시 태어나기' 단계: 관에서 나올 때 '새롭게 태어납니다'(효원힐링센터, 세계일보 2013), 관을 연 뒤 오늘 가족에게 사랑한다·고맙다고 말하라는 안내(정용문 센터장, 브라보마이라이프 2023)
 ];
 // ⑤ 다시 태어난 날: 관 속 질문에 답을 적고(선택) 카드를 만든다. 적은 글은 원할 때만 이미지로 내려받는다
 function rebirthWrite(d){if(death!==d)return;const p=deathPanel('다시 태어난 날',true),qs=d.seen.length?d.seen:COFFIN.filter(q=>q[1]).map(q=>q[0]);let current=qs[0];
@@ -387,7 +388,7 @@ function giveTea(peer){gift={to:peer.peer,k:'tea',t:Date.now()};sendPresence(tru
 function showWish(slot){const l=lanterns.find(l=>l.slot===slot);if(!l?.text){toast('산사가 걸어 둔 민무늬 등이에요.');return;}const p=modal.open(l.mine?'내 소원 연등':'소원 연등');p.append(text('p',l.text,'hand'));}
 function openLantern(){if(death)return;stopWalk();let color=record.lantern?.color||0,preview=null,previewRenderer=null,previewScene=null;const p=modal.open('소원 연등 달기',{onClose:()=>{previewRenderer?.dispose();previewRenderer?.forceContextLoss();if(preview)disposeObject(preview);}});p.append(text('p','마음에 품은 소원 한 문장을 걸어 보세요.','muted'));
   const stage=el('div',{class:'row'});stage.style.justifyContent='center';try{previewRenderer=new THREE.WebGLRenderer({alpha:true,antialias:true});previewRenderer.setSize(150,170);previewRenderer.outputColorSpace=THREE.SRGBColorSpace;previewScene=new THREE.Scene();previewScene.add(new THREE.HemisphereLight(0xfff3db,0x384a38,3));const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(2,3,4);previewScene.add(light);const cam=new THREE.PerspectiveCamera(42,150/170,.01,20);cam.position.set(0,0,2.4);const render=()=>{if(preview){previewScene.remove(preview);disposeObject(preview);}preview=world.makeLantern(color);const box=new THREE.Box3().setFromObject(preview),center=box.getCenter(new THREE.Vector3());preview.position.sub(center);previewScene.add(preview);previewRenderer.render(previewScene,cam);};stage.append(button('‹',()=>{color=(color+4)%5;render();caption.textContent=names[color];}),previewRenderer.domElement,button('›',()=>{color=(color+1)%5;render();caption.textContent=names[color];}));const names=['진홍','치자','청록','미색','쪽빛'],caption=text('p',names[color]);p.append(stage,caption);render();}catch(e){report('lanternPreview',e);const palette=el('div',{class:'colors'});colors(palette,LANTERN_COLORS,LANTERN_COLORS[color],(_,i)=>color=i);p.append(palette);}
-  const input=el('input',{type:'text',maxlength:40,placeholder:'소원을 한 문장으로 적어 주세요','aria-label':'소원'});input.value=record.lantern?.text||'';p.append(input);const submit=button('연등 달기',async()=>{const wish=input.value.trim().slice(0,40);if(!wish){input.focus();return;}submit.disabled=true;const result=await net.putLantern({color,text:wish});if(!result?.ok){if(result?.error)console.warn('[lantern]',result.error);toast('연등을 걸지 못했어요. 잠시 뒤 다시 해 보세요.');submit.disabled=false;return;}record.lantern={color,text:wish};save();modal.close();if(result.saved===false)toast('이 브라우저는 저장이 막혀 있어 이번 방문 동안만 걸려 있어요');const mine=lanterns.find(l=>l.mine),to=mine?world.lanternPos(mine.slot):world.lanternPos(0),obj=world.makeLantern(color),from=player.headPos();scene.add(obj);await tween(2.5,t=>{obj.position.lerpVectors(from,to,ease(t));obj.position.y+=Math.sin(t*Math.PI)*1.6;});scene.remove(obj);disposeObject(obj);toast('내 연등을 달았어요 · 보러 가기',()=>{const s=nav.nearest({x:to.x+(to.x<-8?1:-1),z:to.z});if(s)walkTo(s);},'보러 가기',9000);if(!result.shared)toast('이 기기에 소원 연등을 간직했어요.');},'primary');p.append(el('div',{class:'buttons'},submit));}
+  const input=el('input',{type:'text',maxlength:40,placeholder:'소원을 한 문장으로 적어 주세요','aria-label':'소원'});input.value=record.lantern?.text||'';p.append(input);const submit=button('연등 달기',async()=>{const wish=input.value.trim().slice(0,40);if(!wish){input.focus();return;}submit.disabled=true;const result=await net.putLantern({color,text:wish});if(!result?.ok){if(result?.error)console.warn('[lantern]',result.error);toast('연등을 걸지 못했어요. 잠시 뒤 다시 해 보세요.');submit.disabled=false;return;}record.lantern={color,text:wish};save();modal.close();if(result.saved===false)toast('이 브라우저는 저장이 막혀 있어 이번 방문 동안만 걸려 있어요');const mine=lanterns.find(l=>l.mine),to=mine?world.lanternPos(mine.slot):world.lanternPos(0),obj=world.makeLantern(color),from=player.headPos();scene.add(obj);await tween(2.5,t=>{obj.position.lerpVectors(from,to,ease(t));obj.position.y+=Math.sin(t*Math.PI)*1.6;});scene.remove(obj);disposeObject(obj);toast('내 연등을 달았어요 · 보러 가기',()=>{const s=nav.nearest({x:to.x+(to.x<-8?1:-1),z:to.z});if(s)walkTo(s);},'보러 가기',9000);if(!result.shared&&result.saved!==false)toast('이 기기에 소원 연등을 간직했어요.');},'primary');p.append(el('div',{class:'buttons'},submit));}
 function disposeObject(obj){obj?.traverse(o=>{/* Geometry belongs to world.makeLantern and may be shared. */const ms=Array.isArray(o.material)?o.material:[o.material];ms.filter(Boolean).forEach(m=>m.dispose());});}
 
 async function openTea(){if(death||busy)return;closeProp();modal.close();if(mode!=='wander'&&mode!=='tea')stopActivity();const seat=world.spots['tea-seat'];if(dist(player.root.position,seat)>.5){const ok=await walkTo(seat);if(!ok)return;}snap(seat,.08);setPose('sit');tea={sips:0,brewing:false,ready:false};setMode('tea');modeBar('스님과 차담',[['일어나기',stopActivity]]);teaChoose();}
