@@ -199,7 +199,7 @@ export function createNet() {
     local = rec;
     await ready;
     emitLanterns();
-    if (!db || !net.meId) return savedHere ? { ok: true, shared: false } : { ok: false, shared: false, error: 'storage' };
+    if (!db || !net.meId) return { ok: true, shared: false, saved: savedHere };
     for (let attempt = 0; ; attempt++) {
       try {
         await db.collection('lanterns').doc(net.meId).set(rec);

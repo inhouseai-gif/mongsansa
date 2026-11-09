@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { createMongi } from './actors.js?v=2b2b9d9873';
-import { fonts, dayKey } from './game_ui.js?v=2b2b9d9873';
+import { createMongi } from './actors.js?v=175865e3ba';
+import { fonts, dayKey } from './game_ui.js?v=175865e3ba';
 
 // Portraits are rendered from a fresh Mongi using a front camera, never a copied image asset.
 export async function portraitCanvas({vest='#e59a52',happy=false,ribbon=false}={}){

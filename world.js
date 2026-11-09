@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createBuddha } from './buddha.js?v=2b2b9d9873';
+import { createBuddha } from './buddha.js?v=175865e3ba';
 
 // Coordinates and public API: INTERFACES.md §0–3.1. All scenery is procedural.
 export const BOUNDS = Object.freeze({ minX: -44, maxX: 36, minZ: -42, maxZ: 62 });
